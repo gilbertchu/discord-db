@@ -1,6 +1,6 @@
 # Discord DB
 
-Use a dm between a bot and a user as a database store.
+Use an encrypted dm between a bot and a user as a database store.
 
 ## Up and running
 
