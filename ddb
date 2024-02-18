@@ -1,0 +1,72 @@
+#!/bin/bash
+source .env
+source ddb-enc
+if [ -f ".db" ]; then
+  source .db
+else
+  channel=""
+  message=""
+fi
+
+get() {
+  if [ -z "${message}" ]; then echo 1>&2 "No db loaded (use 'create' to make new)."; return 1; fi
+
+  curl -sS "${base_url}/channels/${channel}/messages/${message}" -H "Authorization: Bot ${token}" | jq -r '.content' | remove_pre | decrypt
+}
+
+update() {
+  if [ -z "${message}" ]; then echo 1>&2 "No db loaded (use 'create' to make new)."; return 1; fi
+
+  curl -X PATCH -sS "${base_url}/channels/${channel}/messages/${message}" \
+    -H "Authorization: Bot ${token}" \
+    -H "Content-Type: application/json" \
+    -d "{\"content\": $( echo -n "$1" | encrypt | preformat | json_encode )}"
+}
+
+create() {
+  channel=$(curl -X POST -sS "${base_url}/users/@me/channels" \
+  -H "Authorization: Bot ${token}" \
+  -H "Content-Type: application/json" \
+  -d "{\"recipient_id\": $user_id}" |
+  jq -cM '.id' | grep -oE '[0-9]+' | head -c -1)
+
+  message=$(curl -X POST -sS "${base_url}/channels/${channel}/messages" \
+    -H "Authorization: Bot ${token}" \
+    -H "Content-Type: application/json" \
+    -d "{\"content\": $( echo -n "$1" | encrypt | preformat | json_encode )}" |
+    jq -cM '.id' | grep -oE '[0-9]+' | head -c -1)
+
+  echo -e "channel=\"$channel\"\nmessage=\"$message\"" > .db
+}
+
+_test() {
+  local emoji="%E2%9C%85" #white_check_mark
+  curl -X PUT "${base_url}/channels/${channel}/messages/${message}/reactions/${emoji}/@me" \
+    -H "Authorization: Bot ${token}" \
+    -H "Content-length: 0"
+}
+
+case $1 in
+  get)
+    if [ $# -gt 1 ]; then
+      echo "Error: extra arguments with get are not allowed."
+      exit 1
+    fi
+    get ;;
+  update)
+    if [ $# -ne 2 ]; then
+      echo "Error: update takes exactly one extra argument."
+      exit 1
+    fi
+    update "$2" ;;
+  create)
+    if [ $# -gt 2 ]; then
+      echo "Error: create takes one argument (optional)."
+      exit 1
+    fi
+    create "$2" ;;
+  test)
+    _test "$@" ;;
+  *)
+    echo "Bad command"
+esac

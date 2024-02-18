@@ -1,0 +1,22 @@
+#!/bin/false
+
+json_encode() {
+  jq -sR -cM --args '.'
+}
+
+encrypt() {
+  openssl aes-256-ctr -a -pbkdf2 -k $passphrase
+}
+
+decrypt() {
+  openssl aes-256-ctr -d -a -pbkdf2 -k $passphrase
+}
+
+preformat() {
+  local text=$(cat)
+  echo -en '```'"\n${text}\n"'```'
+}
+
+remove_pre() {
+  sed '1d' | head -c -4
+}
