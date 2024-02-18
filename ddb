@@ -1,5 +1,6 @@
 #!/bin/bash
 source .env
+if [ $? -eq 1  ]; then echo 1>&2 "Environment is not configured (need .env file, see .template.env)"; exit 1; fi
 source ddb-enc
 if [ -f ".db" ]; then
   source .db
